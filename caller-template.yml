@@ -1,5 +1,3 @@
-# Скопируй этот файл в .github/workflows/security.yml твоего репозитория
-# Для репо с Dockerfile — раскомментируй image-name
 
 name: Security Scan
 
