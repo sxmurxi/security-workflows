@@ -1,0 +1,106 @@
+name: Trivy Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        required: false
+        type: string
+        description: "Docker image name to build and scan (optional, requires Dockerfile)"
+      severity:
+        required: false
+        type: string
+        default: "CRITICAL,HIGH,MEDIUM"
+        description: "Comma-separated severity levels to report"
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy Scan
+    runs-on: [self-hosted, linux, trivy]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- SBOM: CycloneDX ---
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          trivy fs . \
+            --format cyclonedx \
+            --output sbom-cyclonedx.json \
+            --quiet
+        continue-on-error: true
+
+      # --- SBOM: SPDX ---
+      - name: Generate SBOM (SPDX)
+        run: |
+          trivy fs . \
+            --format spdx-json \
+            --output sbom-spdx.json \
+            --quiet
+        continue-on-error: true
+
+      # --- Vulnerability scan ---
+      - name: Vulnerability Scan
+        run: |
+          trivy fs . \
+            --scanners vuln \
+            --format sarif \
+            --output trivy-vuln.sarif \
+            --severity ${{ inputs.severity }} \
+            --quiet
+        continue-on-error: true
+
+      # --- Secret detection ---
+      - name: Secret Detection
+        run: |
+          trivy fs . \
+            --scanners secret \
+            --format sarif \
+            --output trivy-secrets.sarif \
+            --quiet
+        continue-on-error: true
+
+      # --- IaC / Misconfiguration scan ---
+      - name: IaC Misconfiguration Scan
+        run: |
+          trivy config . \
+            --format sarif \
+            --output trivy-iac.sarif \
+            --quiet
+        continue-on-error: true
+
+      # --- Container Image scan (optional) ---
+      - name: Build Docker image
+        if: ${{ inputs.image-name != '' }}
+        run: docker build -t ${{ inputs.image-name }}:scan .
+        continue-on-error: true
+
+      - name: Container Image Scan
+        if: ${{ inputs.image-name != '' }}
+        run: |
+          trivy image \
+            --format sarif \
+            --output trivy-image.sarif \
+            --severity ${{ inputs.severity }} \
+            --quiet \
+            ${{ inputs.image-name }}:scan
+        continue-on-error: true
+
+      # --- Upload all reports as Artifacts ---
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ github.sha }}
+          path: |
+            sbom-cyclonedx.json
+            sbom-spdx.json
+            trivy-vuln.sarif
+            trivy-secrets.sarif
+            trivy-iac.sarif
+            trivy-image.sarif
+          retention-days: 90

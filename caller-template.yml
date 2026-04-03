@@ -1,0 +1,22 @@
+# Скопируй этот файл в .github/workflows/security.yml твоего репозитория
+# Для репо с Dockerfile — раскомментируй image-name
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: '0 2 * * 1'  # каждый понедельник в 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    uses: sxmurxi/security-workflows/.github/workflows/trivy-scan.yml@main
+    with:
+      severity: "CRITICAL,HIGH,MEDIUM"
+      # image-name: "my-app"  # раскомментировать если есть Dockerfile
