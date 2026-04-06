@@ -43,8 +43,17 @@ jobs:
             --quiet
         continue-on-error: true
 
-      # --- Vulnerability scan ---
-      - name: Vulnerability Scan
+      # --- Vulnerability scan: table in log ---
+      - name: Vulnerability Scan (log)
+        run: |
+          trivy fs . \
+            --scanners vuln \
+            --format table \
+            --severity ${{ inputs.severity }}
+        continue-on-error: true
+
+      # --- Vulnerability scan: SARIF for artifact ---
+      - name: Vulnerability Scan (sarif)
         run: |
           trivy fs . \
             --scanners vuln \
@@ -54,8 +63,16 @@ jobs:
             --quiet
         continue-on-error: true
 
-      # --- Secret detection ---
-      - name: Secret Detection
+      # --- Secret detection: table in log ---
+      - name: Secret Detection (log)
+        run: |
+          trivy fs . \
+            --scanners secret \
+            --format table
+        continue-on-error: true
+
+      # --- Secret detection: SARIF for artifact ---
+      - name: Secret Detection (sarif)
         run: |
           trivy fs . \
             --scanners secret \
@@ -64,8 +81,15 @@ jobs:
             --quiet
         continue-on-error: true
 
-      # --- IaC / Misconfiguration scan ---
-      - name: IaC Misconfiguration Scan
+      # --- IaC / Misconfiguration scan: table in log ---
+      - name: IaC Misconfiguration Scan (log)
+        run: |
+          trivy config . \
+            --format table
+        continue-on-error: true
+
+      # --- IaC / Misconfiguration scan: SARIF for artifact ---
+      - name: IaC Misconfiguration Scan (sarif)
         run: |
           trivy config . \
             --format sarif \
